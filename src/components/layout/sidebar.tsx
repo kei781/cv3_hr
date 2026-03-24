@@ -17,6 +17,9 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
+  Wallet,
+  ClipboardCheck,
+  Hourglass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -26,6 +29,7 @@ const employeeNav = [
   { href: "/employee/dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/employee/attendance", label: "내 근태", icon: Clock },
   { href: "/employee/leaves", label: "휴가", icon: Palmtree },
+  { href: "/employee/balance", label: "잔여 현황", icon: Wallet },
   { href: "/employee/approvals", label: "승인함", icon: CheckSquare },
   { href: "/employee/profile", label: "내 정보", icon: UserCircle },
 ];
@@ -35,6 +39,8 @@ const adminNav = [
   { href: "/admin/users", label: "직원관리", icon: Users },
   { href: "/admin/attendance", label: "근태관리", icon: Timer },
   { href: "/admin/leaves", label: "휴가관리", icon: CalendarDays },
+  { href: "/admin/approvals", label: "휴가 승인", icon: ClipboardCheck },
+  { href: "/admin/overtime", label: "추가근무", icon: Hourglass },
   { href: "/admin/calendar", label: "캘린더", icon: Calendar },
   { href: "/admin/mail", label: "메일", icon: Mail },
   { href: "/admin/settings", label: "설정", icon: Settings },

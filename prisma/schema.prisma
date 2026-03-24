@@ -50,6 +50,44 @@ enum UploadBatchStatus {
   FAILED
 }
 
+enum LeaveType {
+  ANNUAL
+  HALF_AM
+  HALF_PM
+  QUARTER
+  SICK
+  COMPENSATORY
+}
+
+enum LeaveBalanceType {
+  ANNUAL
+  SICK
+  COMPENSATORY
+}
+
+enum LeaveGrantReason {
+  AUTO
+  MANUAL
+  OVERTIME
+}
+
+enum LeaveStatus {
+  DRAFT
+  PENDING_L1
+  PENDING_L2
+  APPROVED
+  REJECTED_L1
+  REJECTED_L2
+  CANCELLED
+}
+
+enum OvertimeStatus {
+  CANDIDATE
+  APPROVED
+  REJECTED
+  COMPENSATED
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -75,6 +113,15 @@ model User {
   attendances      Attendance[]
   uploadBatches    UploadBatch[]
   columnMappings   ColumnMapping[]
+
+  leaveBalances         LeaveBalance[]    @relation("UserBalance")
+  leaveBalanceAdjusted  LeaveBalance[]    @relation("AdjustedByUser")
+  leaveRequests         LeaveRequest[]    @relation("UserLeave")
+  leaveRegistered       LeaveRequest[]    @relation("RegisteredByUser")
+  l1Approvals           LeaveRequest[]    @relation("L1Approver")
+  l2Approvals           LeaveRequest[]    @relation("L2Approver")
+  overtimeRequests      OvertimeRequest[] @relation("UserOvertime")
+  overtimeApprovals     OvertimeRequest[] @relation("OvertimeApprover")
 
   @@index([departmentId])
   @@index([teamId])
@@ -174,6 +221,8 @@ model Attendance {
   uploadBatchId String?
   uploadBatch   UploadBatch?  @relation(fields: [uploadBatchId], references: [id])
 
+  overtimeRequests OvertimeRequest[]
+
   @@unique([userId, date])
   @@index([userId])
   @@index([date])
@@ -214,4 +263,82 @@ model ColumnMapping {
   batches     UploadBatch[]
 
   @@index([createdById])
+}
+
+// ─── Phase 4: Leave & Overtime ───────────────────────────
+
+model LeaveBalance {
+  id            String           @id @default(cuid())
+  leaveType     LeaveBalanceType
+  year          Int
+  grantedDays   Float            @default(0)
+  usedDays      Float            @default(0)
+  remainingDays Float            @default(0)
+  expiresAt     DateTime?
+  grantedReason LeaveGrantReason @default(AUTO)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  userId      String
+  user        User  @relation("UserBalance", fields: [userId], references: [id])
+  adjustedById String?
+  adjustedBy  User? @relation("AdjustedByUser", fields: [adjustedById], references: [id])
+
+  @@unique([userId, leaveType, year])
+  @@index([userId])
+}
+
+model LeaveRequest {
+  id             String      @id @default(cuid())
+  leaveType      LeaveType
+  startDate      DateTime
+  endDate        DateTime
+  days           Float
+  reason         String?
+  status         LeaveStatus @default(DRAFT)
+  isProxy        Boolean     @default(false)
+  calendarEventId String?
+  calendarSynced Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  userId         String
+  user           User  @relation("UserLeave", fields: [userId], references: [id])
+  registeredById String
+  registeredBy   User  @relation("RegisteredByUser", fields: [registeredById], references: [id])
+
+  l1ApproverId   String?
+  l1Approver     User?    @relation("L1Approver", fields: [l1ApproverId], references: [id])
+  l1ApprovedAt   DateTime?
+  l1RejectReason String?
+
+  l2ApproverId   String?
+  l2Approver     User?    @relation("L2Approver", fields: [l2ApproverId], references: [id])
+  l2ApprovedAt   DateTime?
+  l2RejectReason String?
+
+  @@index([userId])
+  @@index([status])
+  @@index([l1ApproverId])
+  @@index([l2ApproverId])
+}
+
+model OvertimeRequest {
+  id            String         @id @default(cuid())
+  date          DateTime
+  overtimeHours Float
+  status        OvertimeStatus @default(CANDIDATE)
+  rejectReason  String?
+  createdAt     DateTime       @default(now())
+
+  userId       String
+  user         User       @relation("UserOvertime", fields: [userId], references: [id])
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id])
+  approvedById String?
+  approvedBy   User?      @relation("OvertimeApprover", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
 }
