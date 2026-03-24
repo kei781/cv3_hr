@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  INACTIVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum Role {
+  EMPLOYEE
+  TEAM_LEAD
+  HR
+  ADMIN
+}
+
+enum AttendanceStatus {
+  NORMAL
+  LATE
+  EARLY_LEAVE
+  ABSENT
+  INCOMPLETE
+  ON_LEAVE
+  ON_SICK_LEAVE
+}
+
+enum AttendanceSource {
+  EXCEL_UPLOAD
+  MANUAL
+}
+
+enum UploadBatchStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  position     String?
+  hireDate     DateTime
+  status       UserStatus @default(INVITED)
+  roles        Role[]     @default([EMPLOYEE])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  teamId       String?
+  team         Team?       @relation(fields: [teamId], references: [id])
+
+  invitationsSent  Invitation[]    @relation("InvitedByUser")
+  policyUpdates    PolicyConfig[]
+  auditLogs        AuditLog[]
+  attendances      Attendance[]
+  uploadBatches    UploadBatch[]
+  columnMappings   ColumnMapping[]
+
+  @@index([departmentId])
+  @@index([teamId])
+  @@index([status])
+}
+
+model Department {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  parentId String?
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+
+  teams Team[]
+  users User[]
+
+  @@index([parentId])
+}
+
+model Team {
+  id           String  @id @default(cuid())
+  name         String
+  calendarId   String?
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  users User[]
+
+  @@index([departmentId])
+}
+
+model Invitation {
+  id         String           @id @default(cuid())
+  email      String
+  name       String
+  roles      Role[]           @default([EMPLOYEE])
+  token      String           @unique @default(cuid())
+  status     InvitationStatus @default(PENDING)
+  hireDate   DateTime
+  expiresAt  DateTime
+  createdAt  DateTime         @default(now())
+
+  departmentId String?
+  teamId       String?
+  invitedById  String
+  invitedBy    User @relation("InvitedByUser", fields: [invitedById], references: [id])
+
+  @@index([token])
+  @@index([email])
+  @@index([status])
+}
+
+model PolicyConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  updatedById String
+  updatedBy   User @relation(fields: [updatedById], references: [id])
+
+  @@index([key])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  targetType  String
+  targetId    String
+  beforeValue Json?
+  afterValue  Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  actorId String
+  actor   User @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  date            DateTime
+  clockIn         String
+  clockOut        String?
+  actualWorkHours Float?
+  overtimeHours   Float?
+  status          AttendanceStatus @default(NORMAL)
+  source          AttendanceSource @default(MANUAL)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  uploadBatchId String?
+  uploadBatch   UploadBatch?  @relation(fields: [uploadBatchId], references: [id])
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+}
+
+model UploadBatch {
+  id           String            @id @default(cuid())
+  fileName     String
+  fileUrl      String?
+  totalRows    Int               @default(0)
+  successCount Int               @default(0)
+  errorCount   Int               @default(0)
+  skipCount    Int               @default(0)
+  status       UploadBatchStatus @default(PROCESSING)
+  errorReport  Json?
+  createdAt    DateTime          @default(now())
+
+  uploadedById String
+  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
+  templateId   String?
+  template     ColumnMapping? @relation(fields: [templateId], references: [id])
+
+  attendances Attendance[]
+
+  @@index([uploadedById])
+  @@index([status])
+}
+
+model ColumnMapping {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  mappings  Json
+  createdAt DateTime @default(now())
+
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  batches     UploadBatch[]
+
+  @@index([createdById])
+}
