@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "NotebookEdit",
+      "Agent",
+      "TodoWrite",
+      "mcp__Claude_Preview",
+      "mcp__Claude_in_Chrome",
+      "mcp__mcp-registry",
+      "mcp__scheduled-tasks"
+    ],
+    "defaultMode": "bypassPermissions"
+  }
+}
