@@ -14,7 +14,7 @@ export function ModeSwitch() {
   const handleSwitch = async (mode: "employee" | "admin") => {
     if (mode === currentMode) return;
     await switchMode(mode);
-    router.push(mode === "admin" ? "/admin/dashboard" : "/employee/dashboard");
+    window.location.href = mode === "admin" ? "/admin/dashboard" : "/employee/dashboard";
   };
 
   return (

@@ -7,7 +7,7 @@ import type { ParsedRow } from "@/lib/excel-parser";
 
 const confirmSchema = z.object({
   skipWarnings: z.boolean().default(false),
-  warningRowActions: z.record(z.enum(["include", "skip"])).default({}),
+  warningRowActions: z.record(z.string(), z.enum(["include", "skip"])).default({}),
 });
 
 export async function POST(

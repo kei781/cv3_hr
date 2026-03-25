@@ -88,6 +88,20 @@ enum OvertimeStatus {
   COMPENSATED
 }
 
+enum MailType {
+  INVITATION
+  APPROVAL_REQUEST
+  APPROVAL_RESULT
+  PROXY_LEAVE_NOTIFICATION
+  LEAVE_REMINDER
+}
+
+enum MailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -317,6 +331,8 @@ model LeaveRequest {
   l2ApprovedAt   DateTime?
   l2RejectReason String?
 
+  mailLogs MailLog[]
+
   @@index([userId])
   @@index([status])
   @@index([l1ApproverId])
@@ -341,4 +357,27 @@ model OvertimeRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+// ─── Phase 5: Mail & Calendar ────────────────────────────
+
+model MailLog {
+  id        String     @id @default(cuid())
+  mailType  MailType
+  status    MailStatus @default(PENDING)
+  to        String
+  subject   String
+  body      String?    @db.Text
+  error     String?
+  attempts  Int        @default(0)
+  sentAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  leaveRequestId String?
+  leaveRequest   LeaveRequest? @relation(fields: [leaveRequestId], references: [id])
+
+  @@index([mailType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([leaveRequestId])
 }

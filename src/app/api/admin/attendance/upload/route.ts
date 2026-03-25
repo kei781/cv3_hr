@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
       totalRows: result.summary.total,
       errorCount: result.summary.errors,
       status: "PROCESSING",
-      errorReport: {
+      errorReport: JSON.parse(JSON.stringify({
         rows: result.rows,
         summary: result.summary,
         headers: result.headers,
-      },
+      })),
     },
   });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { notifyLeaveStatusChange } from "@/lib/leave-notifications";
 
 export async function POST(
   _request: NextRequest,
@@ -48,6 +49,8 @@ export async function POST(
     targetId: leaveId,
     after: { status: "APPROVED", days: leave.days },
   });
+
+  notifyLeaveStatusChange(leaveId, "APPROVED", user.id).catch(console.error);
 
   return NextResponse.json({ data: updated });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { notifyLeaveStatusChange } from "@/lib/leave-notifications";
 import { calculateLeaveDays } from "@/lib/policy-engine";
 import { z } from "zod";
 
@@ -72,6 +73,10 @@ export async function POST(request: NextRequest) {
     targetId: leaveRequest.id,
     after: { userId, leaveType, days, isProxy: true, autoApprove },
   });
+
+  if (autoApprove) {
+    notifyLeaveStatusChange(leaveRequest.id, "APPROVED", admin.id).catch(console.error);
+  }
 
   return NextResponse.json({ data: leaveRequest }, { status: 201 });
 }
