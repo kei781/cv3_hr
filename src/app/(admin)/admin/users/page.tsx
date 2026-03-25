@@ -136,12 +136,12 @@ export default function UsersPage() {
             전체 {total}명
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/users/invite">
+        <Link href="/admin/users/invite">
+          <Button>
             <Plus className="mr-2 h-4 w-4" />
             직원 초대
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}

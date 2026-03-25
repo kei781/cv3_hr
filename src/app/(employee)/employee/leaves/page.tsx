@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface Leave {
   id: string;
-  type: string;
+  leaveType: string;
   startDate: string;
   endDate: string;
   days: number;
@@ -101,22 +102,32 @@ export default function MyLeavesPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
 
-  useEffect(() => {
-    async function fetchLeaves() {
-      try {
-        const res = await fetch("/api/employee/leaves?status=ALL");
-        if (res.ok) {
-          const data = await res.json();
-          setLeaves(data.leaves ?? data);
-        }
-      } catch {
-        // silently fail
-      } finally {
-        setLoading(false);
+  const fetchLeaves = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employee/leaves?status=ALL");
+      if (res.ok) {
+        const json = await res.json();
+        setLeaves(json.data ?? []);
       }
-    }
-    fetchLeaves();
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { fetchLeaves(); }, [fetchLeaves]);
+
+  const handleCancel = async (leaveId: string) => {
+    if (!confirm("이 휴가를 취소하시겠습니까?")) return;
+    try {
+      const res = await fetch(`/api/employee/leaves/${leaveId}/cancel`, { method: "POST" });
+      if (res.ok) {
+        toast.success("휴가가 취소되었습니다");
+        fetchLeaves();
+      } else {
+        const json = await res.json().catch(() => null);
+        toast.error(json?.error || "취소 실패");
+      }
+    } catch { toast.error("취소 실패"); }
+  };
 
   const filtered = filterLeaves(leaves, activeTab);
 
@@ -155,8 +166,10 @@ export default function MyLeavesPage() {
 
         <TabsContent value={activeTab}>
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">
-              불러오는 중...
+            <div className="space-y-3 py-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 w-full animate-pulse rounded-lg bg-muted" />
+              ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
@@ -178,7 +191,7 @@ export default function MyLeavesPage() {
                 {filtered.map((leave) => (
                   <TableRow key={leave.id}>
                     <TableCell>
-                      {LEAVE_TYPE_LABELS[leave.type] ?? leave.type}
+                      {LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}
                     </TableCell>
                     <TableCell>
                       {format(new Date(leave.startDate), "yyyy.MM.dd", {
@@ -203,8 +216,8 @@ export default function MyLeavesPage() {
                       })}
                     </TableCell>
                     <TableCell>
-                      {isPending(leave.status) && (
-                        <Button variant="outline" size="xs" disabled>
+                      {(isPending(leave.status) || leave.status === "APPROVED") && (
+                        <Button variant="outline" size="sm" onClick={() => handleCancel(leave.id)}>
                           취소
                         </Button>
                       )}

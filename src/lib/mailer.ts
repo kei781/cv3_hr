@@ -1,4 +1,7 @@
 import nodemailer from "nodemailer";
+import { prisma } from "./prisma";
+import { withRetry } from "./google-calendar";
+import type { MailType } from "@prisma/client";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -10,12 +13,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendMail(options: {
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<void> {
-  // SMTP가 설정되지 않은 경우 콘솔 로그만 출력
+async function sendMailRaw(options: { to: string; subject: string; html: string }): Promise<void> {
   if (!process.env.SMTP_USER) {
     console.log("[Mail] SMTP not configured. Would send:", {
       to: options.to,
@@ -28,6 +26,46 @@ export async function sendMail(options: {
     from: process.env.SMTP_FROM || "CV3 People <noreply@cv3.com>",
     ...options,
   });
+}
+
+export async function sendMail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  mailType: MailType;
+  leaveRequestId?: string;
+}): Promise<string> {
+  const { to, subject, html, mailType, leaveRequestId } = params;
+
+  const mailLog = await prisma.mailLog.create({
+    data: {
+      mailType,
+      to,
+      subject,
+      body: html,
+      status: "PENDING",
+      leaveRequestId,
+    },
+  });
+
+  try {
+    await withRetry(() => sendMailRaw({ to, subject, html }), 3, 1000);
+    await prisma.mailLog.update({
+      where: { id: mailLog.id },
+      data: { status: "SENT", sentAt: new Date(), attempts: 3 },
+    });
+  } catch (error) {
+    await prisma.mailLog.update({
+      where: { id: mailLog.id },
+      data: {
+        status: "FAILED",
+        error: error instanceof Error ? error.message : String(error),
+        attempts: 3,
+      },
+    });
+  }
+
+  return mailLog.id;
 }
 
 export async function sendInvitationEmail(
@@ -54,5 +92,6 @@ export async function sendInvitationEmail(
         </p>
       </div>
     `,
+    mailType: "INVITATION",
   });
 }
