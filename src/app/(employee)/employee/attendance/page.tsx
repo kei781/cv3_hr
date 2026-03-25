@@ -64,8 +64,8 @@ export default function MyAttendancePage() {
       const month = date.getMonth() + 1;
       const res = await fetch(`/api/attendance?year=${year}&month=${month}`);
       if (res.ok) {
-        const data = await res.json();
-        setRecords(data);
+        const json = await res.json();
+        setRecords(json.data ?? []);
       }
     } catch {
       // ignore
@@ -86,7 +86,9 @@ export default function MyAttendancePage() {
 
   const recordMap = new Map<string, AttendanceRecord>();
   for (const r of records) {
-    recordMap.set(r.date, r);
+    // r.date comes as ISO string from API, normalize to yyyy-MM-dd
+    const key = r.date.substring(0, 10);
+    recordMap.set(key, r);
   }
 
   // Build calendar grid cells

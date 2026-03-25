@@ -3,18 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  differenceInCalendarDays,
-  eachDayOfInterval,
-  isWeekend,
-  format,
-} from "date-fns";
+import { eachDayOfInterval, isWeekend } from "date-fns";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const LEAVE_TYPES = [
   { value: "ANNUAL", label: "연차" },
@@ -25,10 +20,11 @@ const LEAVE_TYPES = [
   { value: "COMPENSATORY", label: "보상휴가" },
 ] as const;
 
-interface Balance {
-  annual: { remaining: number; total: number };
-  sick: { remaining: number; total: number };
-  compensatory: { remaining: number; total: number };
+interface BalanceItem {
+  leaveType: string;
+  grantedDays: number;
+  usedDays: number;
+  remainingDays: number;
 }
 
 interface ApproverCandidate {
@@ -60,54 +56,52 @@ function computeDays(type: string, startDate: string, endDate: string): number {
 export default function NewLeavePage() {
   const router = useRouter();
 
-  const [type, setType] = useState("ANNUAL");
+  const [leaveType, setLeaveType] = useState("ANNUAL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
-  const [approverId, setApproverId] = useState("");
+  const [l1ApproverId, setL1ApproverId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [balance, setBalance] = useState<Balance | null>(null);
-  const [approverCandidates, setApproverCandidates] = useState<
-    ApproverCandidate[]
-  >([]);
+  const [balances, setBalances] = useState<BalanceItem[]>([]);
+  const [approverCandidates, setApproverCandidates] = useState<ApproverCandidate[]>([]);
 
   useEffect(() => {
     fetch("/api/employee/balance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) setBalance(data);
+      .then((json) => {
+        if (json?.data?.balances) setBalances(json.data.balances);
       })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (type === "SICK") {
+    if (leaveType === "SICK") {
       fetch("/api/employee/approver-candidates")
         .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data) setApproverCandidates(data.candidates ?? data);
+        .then((json) => {
+          if (json?.data) setApproverCandidates(json.data);
         })
         .catch(() => {});
     }
-  }, [type]);
+  }, [leaveType]);
 
-  // Auto-set endDate for half/quarter types
   useEffect(() => {
-    if (isHalfOrQuarter(type) && startDate) {
+    if (isHalfOrQuarter(leaveType) && startDate) {
       setEndDate(startDate);
     }
-  }, [type, startDate]);
+  }, [leaveType, startDate]);
 
   const days = useMemo(
-    () => computeDays(type, startDate, endDate),
-    [type, startDate, endDate]
+    () => computeDays(leaveType, startDate, endDate),
+    [leaveType, startDate, endDate]
   );
 
-  const remainingAfter = useMemo(() => {
-    if (!balance) return null;
-    return balance.annual.remaining - days;
-  }, [balance, days]);
+  const annualBalance = balances.find((b) => b.leaveType === "ANNUAL");
+  const remainingAfter = annualBalance ? annualBalance.remainingDays - days : null;
+
+  const inputClassName =
+    "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,7 +114,7 @@ export default function NewLeavePage() {
       toast.error("종료일을 선택해주세요.");
       return;
     }
-    if (type === "SICK" && !reason.trim()) {
+    if (leaveType === "SICK" && !reason.trim()) {
       toast.error("병가 사유를 입력해주세요.");
       return;
     }
@@ -128,14 +122,14 @@ export default function NewLeavePage() {
     setSubmitting(true);
     try {
       const body: Record<string, unknown> = {
-        type,
+        leaveType,
         startDate,
         endDate,
         days,
         reason: reason || undefined,
       };
-      if (type === "SICK" && approverId) {
-        body.approverId = approverId;
+      if (leaveType === "SICK" && l1ApproverId) {
+        body.l1ApproverId = l1ApproverId;
       }
 
       const res = await fetch("/api/employee/leaves", {
@@ -149,7 +143,7 @@ export default function NewLeavePage() {
         router.push("/employee/leaves");
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.message ?? "휴가 신청에 실패했습니다.");
+        toast.error(err?.error ?? "휴가 신청에 실패했습니다.");
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다.");
@@ -170,22 +164,16 @@ export default function NewLeavePage() {
         <h1 className="mt-2 text-2xl font-bold">휴가 신청</h1>
       </div>
 
-      {balance && (
-        <Card size="sm">
-          <CardContent>
+      {annualBalance && (
+        <Card>
+          <CardContent className="pt-4">
             <p className="text-sm text-muted-foreground">
-              잔여 연차: <span className="font-semibold text-foreground">{balance.annual.remaining}일</span>
+              잔여 연차: <span className="font-semibold text-foreground">{annualBalance.remainingDays}일</span>
               {days > 0 && (
                 <>
                   , 이번 신청: <span className="font-semibold text-foreground">{days}일</span>
-                  {" "}&rarr; 신청 후:{" "}
-                  <span
-                    className={
-                      (remainingAfter ?? 0) < 0
-                        ? "font-semibold text-red-600"
-                        : "font-semibold text-foreground"
-                    }
-                  >
+                  {" → 신청 후: "}
+                  <span className={(remainingAfter ?? 0) < 0 ? "font-semibold text-red-600" : "font-semibold text-foreground"}>
                     {remainingAfter}일
                   </span>
                 </>
@@ -198,12 +186,12 @@ export default function NewLeavePage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Leave type */}
         <div className="space-y-2">
-          <Label htmlFor="type">유형 선택</Label>
+          <Label htmlFor="leaveType">유형 선택</Label>
           <select
-            id="type"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            id="leaveType"
+            value={leaveType}
+            onChange={(e) => setLeaveType(e.target.value)}
+            className={inputClassName}
           >
             {LEAVE_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -216,30 +204,32 @@ export default function NewLeavePage() {
         {/* Start date */}
         <div className="space-y-2">
           <Label htmlFor="startDate">시작일</Label>
-          <Input
+          <input
             id="startDate"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             required
+            className={inputClassName}
           />
         </div>
 
         {/* End date */}
         <div className="space-y-2">
           <Label htmlFor="endDate">종료일</Label>
-          <Input
+          <input
             id="endDate"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            disabled={isHalfOrQuarter(type)}
+            disabled={isHalfOrQuarter(leaveType)}
             min={startDate}
             required
+            className={inputClassName}
           />
-          {isHalfOrQuarter(type) && (
+          {isHalfOrQuarter(leaveType) && (
             <p className="text-xs text-muted-foreground">
-              {type === "QUARTER" ? "반반차" : "반차"}는 시작일과 동일하게 설정됩니다.
+              {leaveType === "QUARTER" ? "반반차" : "반차"}는 시작일과 동일하게 설정됩니다.
             </p>
           )}
         </div>
@@ -255,31 +245,31 @@ export default function NewLeavePage() {
         {/* Reason */}
         <div className="space-y-2">
           <Label htmlFor="reason">
-            사유{type === "SICK" && <span className="text-red-500"> *</span>}
+            사유{leaveType === "SICK" && <span className="text-red-500"> *</span>}
           </Label>
           <Textarea
             id="reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={
-              type === "SICK"
+              leaveType === "SICK"
                 ? "병가 사유를 입력해주세요 (필수)"
                 : "사유를 입력해주세요 (선택)"
             }
-            required={type === "SICK"}
+            required={leaveType === "SICK"}
           />
         </div>
 
         {/* Approver (SICK only) */}
-        {type === "SICK" && (
+        {leaveType === "SICK" && (
           <>
             <div className="space-y-2">
               <Label htmlFor="approver">1차 승인자</Label>
               <select
                 id="approver"
-                value={approverId}
-                onChange={(e) => setApproverId(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                value={l1ApproverId}
+                onChange={(e) => setL1ApproverId(e.target.value)}
+                className={inputClassName}
               >
                 <option value="">승인자를 선택하세요</option>
                 {approverCandidates.map((c) => (
@@ -291,18 +281,17 @@ export default function NewLeavePage() {
               </select>
             </div>
 
-            <Card size="sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-sm">승인 워크플로우 미리보기</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  [신청자] &rarr; [1차:{" "}
-                  {approverId
-                    ? approverCandidates.find((c) => c.id === approverId)
-                        ?.name ?? "선택한 승인자"
+                  [신청자] → [1차:{" "}
+                  {l1ApproverId
+                    ? approverCandidates.find((c) => c.id === l1ApproverId)?.name ?? "선택한 승인자"
                     : "미선택"}
-                  ] &rarr; [2차: HR] &rarr; 완료
+                  ] → [2차: HR] → 완료
                 </p>
               </CardContent>
             </Card>
@@ -311,13 +300,18 @@ export default function NewLeavePage() {
 
         {/* Actions */}
         <div className="flex items-center gap-3 pt-2">
-          <Button type="submit" disabled={submitting}>
+          <button
+            type="submit"
+            disabled={submitting}
+            className={cn(buttonVariants({ variant: "default", size: "default" }))}
+          >
             {submitting ? "신청 중..." : "휴가 신청"}
-          </Button>
-          <Link href="/employee/leaves">
-            <Button type="button" variant="outline">
-              취소
-            </Button>
+          </button>
+          <Link
+            href="/employee/leaves"
+            className={cn(buttonVariants({ variant: "outline", size: "default" }))}
+          >
+            취소
           </Link>
         </div>
       </form>

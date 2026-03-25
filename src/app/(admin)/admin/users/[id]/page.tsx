@@ -89,7 +89,8 @@ export default function UserDetailPage() {
     try {
       const res = await fetch(`/api/admin/users/${id}`);
       if (!res.ok) throw new Error("사용자 정보를 불러올 수 없습니다.");
-      const data: User = await res.json();
+      const json = await res.json();
+      const data: User = json.data ?? json;
       setUser(data);
       setForm({
         name: data.name ?? "",
@@ -108,8 +109,8 @@ export default function UserDetailPage() {
     try {
       const res = await fetch("/api/admin/departments");
       if (!res.ok) throw new Error("부서 목록을 불러올 수 없습니다.");
-      const data: Department[] = await res.json();
-      setDepartments(data);
+      const deptJson = await res.json();
+      setDepartments(deptJson.data ?? deptJson);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "오류가 발생했습니다.");
     }
@@ -125,8 +126,8 @@ export default function UserDetailPage() {
         `/api/admin/teams?departmentId=${departmentId}`
       );
       if (!res.ok) throw new Error("팀 목록을 불러올 수 없습니다.");
-      const data: Team[] = await res.json();
-      setTeams(data);
+      const teamJson = await res.json();
+      setTeams(teamJson.data ?? teamJson);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "오류가 발생했습니다.");
     }

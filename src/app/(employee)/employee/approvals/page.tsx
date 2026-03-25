@@ -45,7 +45,8 @@ export default function ApprovalsPage() {
     try {
       const res = await fetch("/api/approvals/pending");
       const json = await res.json();
-      setItems(json.data ?? []);
+      const d = json.data ?? {};
+      setItems([...(d.pending ?? []), ...(d.completed ?? [])]);
     } catch {
       // ignore
     } finally {

@@ -24,6 +24,7 @@ interface SyncFailure {
   startDate: string;
   endDate: string;
   days: number;
+  failReason: string | null;
   user: { name: string; email: string; team: { name: string; calendarId: string | null } | null };
 }
 
@@ -213,6 +214,7 @@ export default function CalendarPage() {
                     <TableHead>유형</TableHead>
                     <TableHead>기간</TableHead>
                     <TableHead>일수</TableHead>
+                    <TableHead>실패 사유</TableHead>
                     <TableHead className="w-[100px]">작업</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -227,6 +229,9 @@ export default function CalendarPage() {
                         {new Date(f.endDate).toLocaleDateString("ko-KR")}
                       </TableCell>
                       <TableCell>{f.days}</TableCell>
+                      <TableCell className="text-xs text-red-600 max-w-[250px]">
+                        {f.failReason || "-"}
+                      </TableCell>
                       <TableCell>
                         <Button
                           size="sm"
@@ -241,7 +246,7 @@ export default function CalendarPage() {
                   ))}
                   {failures.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         동기화 실패 건이 없습니다
                       </TableCell>
                     </TableRow>

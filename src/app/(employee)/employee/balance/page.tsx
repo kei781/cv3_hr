@@ -21,7 +21,7 @@ interface BalanceCategory {
 
 interface RecentLeave {
   id: string;
-  type: string;
+  leaveType: string;
   startDate: string;
   endDate: string;
   days: number;
@@ -33,7 +33,7 @@ interface BalanceData {
   annual: BalanceCategory;
   sick: BalanceCategory;
   compensatory: BalanceCategory;
-  recentLeaves?: RecentLeave[];
+  recentLeaves: RecentLeave[];
 }
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
@@ -57,7 +57,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   const label = STATUS_LABELS[status] ?? status;
-
   const colorClass =
     status === "PENDING_L1" || status === "PENDING_L2"
       ? "bg-yellow-100 text-yellow-800 border-yellow-200"
@@ -66,7 +65,6 @@ function StatusBadge({ status }: { status: string }) {
         : status === "REJECTED_L1" || status === "REJECTED_L2"
           ? "bg-red-100 text-red-800 border-red-200"
           : "bg-gray-100 text-gray-600 border-gray-200";
-
   return (
     <Badge variant="outline" className={colorClass}>
       {label}
@@ -74,16 +72,9 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function BalanceCard({
-  title,
-  data,
-}: {
-  title: string;
-  data: BalanceCategory;
-}) {
+function BalanceCard({ title, data }: { title: string; data: BalanceCategory }) {
   const percentage =
     data.total > 0 ? Math.round((data.remaining / data.total) * 100) : 0;
-
   return (
     <Card>
       <CardHeader>
@@ -102,15 +93,24 @@ function BalanceCard({
         </div>
         {data.expiresAt && (
           <p className="text-xs text-muted-foreground">
-            만료일:{" "}
-            {format(new Date(data.expiresAt), "yyyy년 MM월 dd일", {
-              locale: ko,
-            })}
+            만료일: {format(new Date(data.expiresAt), "yyyy년 MM월 dd일", { locale: ko })}
           </p>
         )}
       </CardContent>
     </Card>
   );
+}
+
+function toBalanceCategory(
+  balances: Array<{ leaveType: string; grantedDays: number; remainingDays: number; expiresAt?: string | null }>,
+  type: string
+): BalanceCategory {
+  const b = balances.find((b) => b.leaveType === type);
+  return {
+    remaining: b?.remainingDays ?? 0,
+    total: b?.grantedDays ?? 0,
+    expiresAt: b?.expiresAt ?? undefined,
+  };
 }
 
 export default function BalancePage() {
@@ -123,21 +123,29 @@ export default function BalancePage() {
         const res = await fetch("/api/employee/balance");
         if (res.ok) {
           const json = await res.json();
-          setData(json);
+          const { balances = [], recentLeaves = [] } = json.data || json;
+          setData({
+            annual: toBalanceCategory(balances, "ANNUAL"),
+            sick: toBalanceCategory(balances, "SICK"),
+            compensatory: toBalanceCategory(balances, "COMPENSATORY"),
+            recentLeaves,
+          });
         }
-      } catch {
-        // silently fail
-      } finally {
-        setLoading(false);
-      }
+      } catch { /* ignore */ }
+      finally { setLoading(false); }
     }
     fetchBalance();
   }, []);
 
   if (loading) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
-        불러오는 중...
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">잔여 현황</h1>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -172,7 +180,7 @@ export default function BalancePage() {
         <BalanceCard title="보상휴가" data={data.compensatory} />
       </div>
 
-      {data.recentLeaves && data.recentLeaves.length > 0 && (
+      {data.recentLeaves.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">최근 사용 내역</h2>
           <div className="space-y-2">
@@ -183,18 +191,14 @@ export default function BalancePage() {
               >
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">
-                    {LEAVE_TYPE_LABELS[leave.type] ?? leave.type}
+                    {LEAVE_TYPE_LABELS[leave.leaveType] ?? leave.leaveType}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(leave.startDate), "yyyy.MM.dd", {
-                      locale: ko,
-                    })}
+                    {format(new Date(leave.startDate), "yyyy.MM.dd", { locale: ko })}
                     {leave.startDate !== leave.endDate && (
                       <>
                         {" ~ "}
-                        {format(new Date(leave.endDate), "yyyy.MM.dd", {
-                          locale: ko,
-                        })}
+                        {format(new Date(leave.endDate), "yyyy.MM.dd", { locale: ko })}
                       </>
                     )}
                     {" "}({leave.days}일)

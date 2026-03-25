@@ -76,7 +76,7 @@ export default function AttendancePage() {
   useEffect(() => {
     fetch("/api/admin/departments")
       .then((res) => res.json())
-      .then((data) => setDepartments(data))
+      .then((json) => setDepartments(json.data ?? []))
       .catch(() => {});
   }, []);
 
@@ -84,9 +84,10 @@ export default function AttendancePage() {
   useEffect(() => {
     fetch("/api/admin/users")
       .then((res) => res.json())
-      .then((data: User[]) => {
-        setUsers(data);
-        setFilteredUsers(data);
+      .then((json) => {
+        const list = json.data ?? [];
+        setUsers(list);
+        setFilteredUsers(list);
       })
       .catch(() => {});
   }, []);
@@ -97,7 +98,7 @@ export default function AttendancePage() {
     if (selectedDepartmentId) {
       fetch(`/api/admin/teams?departmentId=${selectedDepartmentId}`)
         .then((res) => res.json())
-        .then((data) => setTeams(data))
+        .then((json) => setTeams(json.data ?? []))
         .catch(() => {});
     } else {
       setTeams([]);
@@ -124,7 +125,7 @@ export default function AttendancePage() {
     const month = currentMonth.getMonth() + 1;
     fetch(`/api/attendance?userId=${selectedUserId}&year=${year}&month=${month}`)
       .then((res) => res.json())
-      .then((data) => setAttendance(data))
+      .then((json) => setAttendance(json.data ?? []))
       .catch(() => setAttendance([]));
   }, [selectedUserId, currentMonth]);
 

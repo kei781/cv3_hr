@@ -90,11 +90,11 @@ export default function UsersPage() {
 
       const res = await fetch(`/api/admin/users?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch users");
-      const data: UsersResponse = await res.json();
+      const json = await res.json();
 
-      setUsers(data.users);
-      setTotal(data.total);
-      setTotalPages(data.totalPages);
+      setUsers(json.data ?? []);
+      setTotal(json.pagination?.total ?? 0);
+      setTotalPages(json.pagination?.totalPages ?? 0);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -107,7 +107,7 @@ export default function UsersPage() {
       const res = await fetch("/api/admin/departments");
       if (!res.ok) throw new Error("Failed to fetch departments");
       const data = await res.json();
-      setDepartments(data.departments ?? data);
+      setDepartments(data.data ?? []);
     } catch (error) {
       console.error("Error fetching departments:", error);
     }

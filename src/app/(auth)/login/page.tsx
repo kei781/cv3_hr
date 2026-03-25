@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -16,13 +15,20 @@ import {
 } from "@/components/ui/card";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const email = emailRef.current?.value ?? "";
+    const password = passwordRef.current?.value ?? "";
+
+    if (!email || !password) {
+      toast.error("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -35,8 +41,8 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error("이메일 또는 비밀번호가 올바르지 않습니다.");
       } else {
-        router.push("/employee/dashboard");
-        router.refresh();
+        window.location.href = "/employee/dashboard";
+        return;
       }
     } catch {
       toast.error("오류가 발생했습니다. 다시 시도해주세요.");
@@ -44,6 +50,9 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const inputClassName =
+    "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1.5 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm";
 
   return (
     <Card className="w-full max-w-sm">
@@ -57,28 +66,32 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">이메일</Label>
-            <Input
+            <input
+              ref={emailRef}
               id="email"
               type="email"
               placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               required
+              className={inputClassName}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">비밀번호</Label>
-            <Input
+            <input
+              ref={passwordRef}
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               required
+              className={inputClassName}
             />
           </div>
-          <Button className="w-full" disabled={isLoading}>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={cn(buttonVariants({ variant: "default", size: "default" }), "w-full")}
+          >
             {isLoading ? "로그인 중..." : "로그인"}
-          </Button>
+          </button>
         </form>
       </CardContent>
     </Card>
