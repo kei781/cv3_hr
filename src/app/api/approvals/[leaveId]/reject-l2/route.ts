@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
+import { notifyLeaveStatusChange } from "@/lib/leave-notifications";
 import { z } from "zod";
 
 const rejectSchema = z.object({ reason: z.string().min(1, "반려 사유를 입력하세요") });
@@ -34,6 +35,8 @@ export async function POST(
     targetId: leaveId,
     after: { status: "REJECTED_L2", reason: parsed.data.reason },
   });
+
+  notifyLeaveStatusChange(leaveId, "REJECTED_L2", user.id).catch(console.error);
 
   return NextResponse.json({ data: updated });
 }

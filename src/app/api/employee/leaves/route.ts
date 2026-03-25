@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-auth";
 import { logAudit } from "@/lib/audit";
 import { calculateLeaveDays } from "@/lib/policy-engine";
+import { notifyLeaveStatusChange } from "@/lib/leave-notifications";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -116,6 +117,8 @@ export async function POST(request: NextRequest) {
     targetId: leaveRequest.id,
     after: { leaveType, days, status: newStatus },
   });
+
+  notifyLeaveStatusChange(leaveRequest.id, newStatus, user.id).catch(console.error);
 
   return NextResponse.json({ data: leaveRequest }, { status: 201 });
 }
