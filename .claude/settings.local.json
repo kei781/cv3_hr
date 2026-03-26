@@ -15,7 +15,8 @@
       "mcp__Claude_Preview",
       "mcp__Claude_in_Chrome",
       "mcp__mcp-registry",
-      "mcp__scheduled-tasks"
+      "mcp__scheduled-tasks",
+      "mcp__Control_Chrome__open_url"
     ],
     "defaultMode": "bypassPermissions"
   }
