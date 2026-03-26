@@ -294,7 +294,16 @@ export default function UserDetailPage() {
           {statusBadge(user.status)}
         </div>
         <div className="flex items-center gap-2">
-          {!editing && (
+          {editing ? (
+            <>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? "저장 중..." : "저장"}
+              </Button>
+              <Button variant="outline" onClick={handleCancelEdit}>
+                취소
+              </Button>
+            </>
+          ) : (
             <Button variant="outline" onClick={() => setEditing(true)}>
               수정
             </Button>
@@ -467,18 +476,6 @@ export default function UserDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Edit action buttons */}
-      {editing && (
-        <div className="flex items-center gap-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "저장 중..." : "저장"}
-          </Button>
-          <Button variant="outline" onClick={handleCancelEdit}>
-            취소
-          </Button>
-        </div>
-      )}
-
       {/* Leave balance */}
       <LeaveBalanceSection userId={id as string} />
     </div>
@@ -501,14 +498,10 @@ function LeaveBalanceSection({ userId }: { userId: string }) {
   const year = new Date().getFullYear();
 
   const fetchBalances = useCallback(async () => {
-    const res = await fetch(`/api/admin/balance/${userId}/adjust`);
-    // This endpoint doesn't have GET, so fetch from user detail or use a different approach
-    // Actually let's just use a direct query approach - fetch balances from employee balance API won't work for admin
-    // We'll call a simple fetch to get balance data
     try {
-      const balRes = await fetch(`/api/employee/balance?year=${year}`);
-      if (balRes.ok) {
-        const json = await balRes.json();
+      const res = await fetch(`/api/admin/balance/${userId}?year=${year}`);
+      if (res.ok) {
+        const json = await res.json();
         setBalances(json.data?.balances || []);
       }
     } catch {
@@ -517,16 +510,8 @@ function LeaveBalanceSection({ userId }: { userId: string }) {
   }, [userId, year]);
 
   useEffect(() => {
-    // For admin, we need to query balances directly - use a workaround
-    async function load() {
-      try {
-        // Use admin users API which returns user data, but not balances
-        // For now, show the adjust UI and let the admin create balances
-        setBalances([]);
-      } catch { /* */ }
-    }
-    load();
-  }, [userId]);
+    fetchBalances();
+  }, [fetchBalances]);
 
   const handleAdjust = async () => {
     if (!adjustForm.reason) {
