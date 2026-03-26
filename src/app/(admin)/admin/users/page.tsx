@@ -27,7 +27,7 @@ interface User {
   position?: string | null;
   hireDate?: string | null;
   status: "ACTIVE" | "INVITED" | "INACTIVE";
-  role: "ADMIN" | "HR" | "TEAM_LEAD" | "EMPLOYEE";
+  roles: ("ADMIN" | "HR" | "TEAM_LEAD" | "EMPLOYEE")[];
 }
 
 interface Department {
@@ -235,11 +235,16 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={ROLE_COLORS[user.role]}
-                    >
-                      {user.role}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {(user.roles ?? []).map((role) => (
+                        <Badge
+                          key={role}
+                          className={ROLE_COLORS[role]}
+                        >
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
