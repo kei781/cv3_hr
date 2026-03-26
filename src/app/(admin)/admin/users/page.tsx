@@ -45,9 +45,9 @@ interface UsersResponse {
 
 const STATUS_OPTIONS = [
   { value: "", label: "전체" },
-  { value: "INVITED", label: "INVITED" },
-  { value: "ACTIVE", label: "ACTIVE" },
-  { value: "INACTIVE", label: "INACTIVE" },
+  { value: "INVITED", label: "초대됨" },
+  { value: "ACTIVE", label: "재직중" },
+  { value: "INACTIVE", label: "퇴사" },
 ] as const;
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,11 +56,24 @@ const STATUS_COLORS: Record<string, string> = {
   INACTIVE: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "재직중",
+  INVITED: "초대됨",
+  INACTIVE: "퇴사",
+};
+
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   HR: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   TEAM_LEAD: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   EMPLOYEE: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "관리자",
+  HR: "인사담당",
+  TEAM_LEAD: "팀장",
+  EMPLOYEE: "직원",
 };
 
 export default function UsersPage() {
@@ -231,7 +244,7 @@ export default function UsersPage() {
                     <Badge
                       className={STATUS_COLORS[user.status]}
                     >
-                      {user.status}
+                      {STATUS_LABELS[user.status] ?? user.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -241,7 +254,7 @@ export default function UsersPage() {
                           key={role}
                           className={ROLE_COLORS[role]}
                         >
-                          {role}
+                          {ROLE_LABELS[role] ?? role}
                         </Badge>
                       ))}
                     </div>
