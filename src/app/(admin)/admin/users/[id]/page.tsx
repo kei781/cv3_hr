@@ -47,10 +47,10 @@ interface Team {
 const ALL_ROLES = ["EMPLOYEE", "TEAM_LEAD", "HR", "ADMIN"] as const;
 
 const ROLE_LABELS: Record<string, string> = {
-  EMPLOYEE: "EMPLOYEE",
-  TEAM_LEAD: "TEAM_LEAD",
-  HR: "HR",
-  ADMIN: "ADMIN",
+  EMPLOYEE: "직원",
+  TEAM_LEAD: "팀장",
+  HR: "인사담당",
+  ADMIN: "관리자",
 };
 
 // ---------------------------------------------------------------------------
